@@ -6,6 +6,11 @@ const app = express();
 // Allow parsing JSON bodies
 app.use(express.json());
 
+// health‐check at root
+app.get("/", (req, res) => {
+  return res.send("🌊 Flood‑Proxy is up and running!");
+});
+
 // POST endpoint for your ESP32 to call
 app.post("/upload", async (req, res) => {
   try {
