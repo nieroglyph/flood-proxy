@@ -1,58 +1,41 @@
+// index.js
 const express = require("express");
 const axios = require("axios");
 const app = express();
 
-// 🛠️ Enable trusting the proxy (Render) to detect HTTPS correctly
-app.enable("trust proxy");
-
-// ✅ Allow HTTP requests (disable HTTPS redirect for SIM800L)
-app.use((req, res, next) => {
-  if (req.secure || req.headers["x-forwarded-proto"] === "https") {
-    return next();
-  }
-  // Allow insecure HTTP (SIM800L does not support HTTPS)
-  next();
-});
-
-// ✅ Allow parsing JSON request bodies
+// Allow parsing JSON bodies
 app.use(express.json());
 
-// ✅ Health check endpoint
+// health‐check at root
 app.get("/", (req, res) => {
   return res.send("🌊 Flood‑Proxy is up and running!");
 });
 
-// ✅ SIM800L POST upload endpoint (your ESP32 uses this)
+// POST endpoint for your ESP32 to call
 app.post("/upload", async (req, res) => {
   try {
-    const data = req.body; // Should be { device_id: ..., distance: ..., timestamp: ... }
+    const data = req.body; // { distance: 12.34 }
 
-    console.log("Received data from GSM device:", data);
-
-    // 🔐 Firebase config from environment variables (set in Render Dashboard)
+    // Firebase credentials
     const firebaseBase = process.env.FIREBASE_URL;
     const firebaseSecret = process.env.FIREBASE_SECRET;
 
-    if (!firebaseBase || !firebaseSecret) {
-      return res.status(500).json({ status: "error", message: "Missing Firebase credentials" });
-    }
+    const firebaseUrl = ${firebaseBase}/sensors/Node_1.json?auth=${firebaseSecret};
 
-    // 👉 Example: https://your-firebase.firebaseio.com/sensors/Node_1.json?auth=...
-    const nodeName = data.device_id || "Node_1";
-    const firebaseUrl = `${firebaseBase}/sensors/${nodeName}.json?auth=${firebaseSecret}`;
 
-    // 🔁 Patch the data to Firebase
-    const firebaseResponse = await axios.patch(firebaseUrl, data);
+    // Forward data to Firebase
+    const response = await axios.patch(firebaseUrl, data);
 
-    return res.json({ status: "ok", firebase: firebaseResponse.data });
+    // Send success back
+    return res.json({ status: "ok", firebase: response.data });
   } catch (err) {
     console.error("Error forwarding to Firebase:", err.message);
     return res.status(500).json({ status: "error", message: err.message });
   }
 });
 
-// ✅ Start server
+// Start server on the port provided by Render (or 3000 locally)
 const port = process.env.PORT || 3000;
 app.listen(port, () => {
-  console.log(`🚀 Server listening on port ${port}`);
+  console.log(Server listening on port ${port});
 });
