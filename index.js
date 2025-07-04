@@ -20,7 +20,7 @@ app.post("/upload", async (req, res) => {
     const firebaseBase = process.env.FIREBASE_URL;
     const firebaseSecret = process.env.FIREBASE_SECRET;
 
-    const firebaseUrl = ${firebaseBase}/sensors/Node_1.json?auth=${firebaseSecret};
+    const firebaseUrl = `${firebaseBase}/sensors/Node_1.json?auth=${firebaseSecret}`;
 
 
     // Forward data to Firebase
@@ -37,5 +37,5 @@ app.post("/upload", async (req, res) => {
 // Start server on the port provided by Render (or 3000 locally)
 const port = process.env.PORT || 3000;
 app.listen(port, () => {
-  console.log(Server listening on port ${port});
+  console.log(`Server listening on port ${port}`);
 });
