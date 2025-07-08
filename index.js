@@ -34,20 +34,52 @@ app.post("/upload", async (req, res) => {
   }
 });
 
-// Add this to your index.js after the existing /upload endpoint
-app.post("/upload-http", async (req, res) => {
-  try {
-    const data = req.body;
-    const firebaseBase = process.env.FIREBASE_URL;
-    const firebaseSecret = process.env.FIREBASE_SECRET;
-    const firebaseUrl = `${firebaseBase}/sensors/Node_1.json?auth=${firebaseSecret}`;
-    
-    const response = await axios.patch(firebaseUrl, data);
-    return res.json({ status: "ok", firebase: response.data });
-  } catch (err) {
-    console.error("Error forwarding to Firebase:", err.message);
-    return res.status(500).json({ status: "error", message: err.message });
+// SMS Blast
+// Semaphore credentials
+const SEMAPHORE_KEY    = process.env.SEMAPHORE_API_KEY;
+const SEMAPHORE_SENDER = process.env.SEMAPHORE_SENDER;
+
+// Admin‑triggered SMS blast: POST /blast-sms { "message": "Your text here" }
+app.post("/blast-sms", async (req, res) => {
+  const { message } = req.body;
+  if (!message) {
+    return res.status(400).json({ error: "Please provide a message." });
   }
+
+  // Load numbers from a local file
+  let numbers;
+  try {
+    numbers = fs
+      .readFileSync("numbers.txt", "utf8")
+      .split("\n")
+      .map(n => n.trim())
+      .filter(n => n);
+  } catch (e) {
+    return res
+      .status(500)
+      .json({ error: "Cannot read numbers.txt: " + e.message });
+  }
+
+  const results = [];
+  for (let to of numbers) {
+    try {
+      const r = await axios.get("https://semaphore.co/api/v4/messages", {
+        params: {
+          apikey: SEMAPHORE_KEY,
+          number: to,
+          message,
+          sendername: SEMAPHORE_SENDER
+        }
+      });
+      results.push({ to, status: r.data.status });
+    } catch (err) {
+      results.push({ to, status: "error", error: err.message });
+    }
+    // tiny pause so we don’t get rate‑limited
+    await new Promise(r => setTimeout(r, 200));
+  }
+
+  return res.json({ sent: results.length, results });
 });
 
 // Start server on the port provided by Render (or 3000 locally)
