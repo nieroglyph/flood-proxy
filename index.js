@@ -1,6 +1,7 @@
 // index.js
 const express = require("express");
 const axios = require("axios");
+const fs      = require("fs");
 const app = express();
 
 // Allow parsing JSON bodies
@@ -81,6 +82,32 @@ app.post("/blast-sms", async (req, res) => {
 
   return res.json({ sent: results.length, results });
 });
+
+// Receive replies from PhilSMS
+app.post("/sms-reply", (req, res) => {
+  // 1. Grab the incoming data
+  const from    = req.body.sender;   // phone number
+  const message = req.body.message;  // text they sent
+
+  console.log(`📥 Reply from ${from}: "${message}"`);
+
+  // 2. (Optional) If they text "1", send back location
+  if (message.trim() === "1") {
+    const replyText = "Your location is Talaba, Bacoor City";
+    axios.post("https://app.philsms.com/api/v3/sms/send", {
+      recipient: from,
+      sender_id: process.env.PHILSMS_SENDER,
+      type: "plain",
+      message: replyText
+    }, {
+      headers: { Authorization: `Bearer ${process.env.PHILSMS_TOKEN}` }
+    }).catch(console.error);
+  }
+
+  // 3. Send a 200 OK back to PhilSMS
+  res.sendStatus(200);
+});
+
 
 // Start server on the port provided by Render (or 3000 locally)
 const port = process.env.PORT || 3000;
